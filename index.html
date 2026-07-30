@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <!-- 文字コードをUTF-8に設定 -->
+  <meta charset="UTF-8">
+  <!-- スマホやタブレット画面でのレスポンシブ表示用設定 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- ブラウザのタブに表示されるタイトル -->
+  <title>フニクラ構造（逆さ吊り模型）体験アプリ</title>
+  <style>
+    /* 全要素のリセット設定（余白をゼロにし、サイズ計算を統一） */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    /* 画面全体の設定 */
+    body {
+      font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", MeiRyo, sans-serif;
+      background-color: #181818; /* ダークグレーの背景色 */
+      color: #e0e0e0; /* 文字色を明るいグレーに */
+      overflow: hidden; /* スクロールバーを非表示 */
+      height: 100vh; /* 画面の高さを100%に */
+      display: flex;
+      flex-direction: column;
+    }
+    /* 3Dキャンバスのコンテナ領域 */
+    #canvas-container {
+      flex: 1;
+      width: 100%;
+      height: 100%;
+      position: relative;
+    }
+    
+    /* 上部に表示する操作ガイド案内メッセージ */
+    #guide-message {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%); /* 中央寄せ */
+      background: rgba(0, 0, 0, 0.75); /* 半透明の黒背景 */
+      padding: 10px 20px;
+      border-radius: 20px;
+      font-size: 14px;
+      color: #4db8ff;
+      border: 1px solid #0088ff;
+      pointer-events: none; /* マウスイベントを透過させる */
+      transition: all 0.3s;
+    }
+
+    /* 画面下部のステップ切替UIパネル */
+    #ui-container {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%); /* 中央寄せ */
+      display: flex;
+      gap: 15px; /* カード同士の間隔 */
+      background: rgba(30, 30, 30, 0.85);
+      padding: 15px 20px;
+      border-radius: 16px;
+      backdrop-filter: blur(8px); /* 背景をぼかすエフェクト */
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+      border: 1px solid rgba(255,255,255,0.1);
+      max-width: 90vw;
+    }
+
+    /* 各ステップのカードスタイル */
+    .step-card {
+      flex: 1;
+      min-width: 180px;
+      max-width: 240px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 2px solid transparent;
+      border-radius: 12px;
+      padding: 12px;
+      cursor: pointer; /* カーソルを指マークに */
+      text-align: center;
+      transition: all 0.3s ease;
+      user-select: none; /* テキスト選択を防止 */
+    }
+    /* ホバー時の装飾 */
+    .step-card:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+    /* アクティブ選択状態のカード */
+    .step-card.active {
+      border-color: #0088ff;
+      background: rgba(0, 136, 255, 0.15);
+    }
+
+    /* カード内のステップ番号 */
+    .step-num {
+      font-size: 12px;
+      font-weight: bold;
+      color: #888;
+      margin-bottom: 4px;
+    }
+    .step-card.active .step-num {
+      color: #0088ff;
+    }
+
+    /* カード内のステップタイトル */
+    .step-title {
+      font-size: 15px;
+      font-weight: bold;
+      color: #fff;
+      margin-bottom: 6px;
+    }
+
+    /* カード内のステップ説明文 */
+    .step-desc {
+      font-size: 11px;
+      color: #aaa;
+      line-height: 1.4;
+    }
+
+    /* 紐リセットボタン */
+    #reset-btn {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.2);
+      padding: 8px 16px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: background 0.2s;
+    }
+    #reset-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 3Dを描画するキャンバスを入れるコンテナ -->
+  <div id="canvas-container"></div>
+  <!-- 画面上部の案内テキスト -->
+  <div id="guide-message">💡 1つ目のドット（土台または重り）をクリックしてください</div>
+  <!-- 紐クリアボタン（クリック時に resetStrands 関数を実行） -->
+  <button id="reset-btn" onclick="resetStrands()">紐をクリア</button>
+
+  <!-- 画面下部のステップ切り替えUIパネル -->
+  <div id="ui-container">
+    <!-- ステップ01用カード -->
+    <div class="step-card active" id="card-step1" onclick="setStep(1)">
+      <div class="step-num">01</div>
+      <div class="step-title">紐を吊る</div>
+      <div class="step-desc">土台や重りのドットを結ぶと重力で垂れる</div>
+    </div>
+    <!-- ステップ02用カード -->
+    <div class="step-card" id="card-step2" onclick="setStep(2)">
+      <div class="step-num">02</div>
+      <div class="step-title">錘で形を決める</div>
+      <div class="step-desc">重さと位置で曲線が沈む</div>
+    </div>
+    <!-- ステップ03用カード -->
+    <div class="step-card" id="card-step3" onclick="setStep(3)">
+      <div class="step-num">03</div>
+      <div class="step-title">ひっくり返す</div>
+      <div class="step-desc">圧縮だけで自立する建築に</div>
+    </div>
+  </div>
+
+  <!-- Three.js本体ライブラリの読み込み -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <!-- マウス操作でカメラを動かすための OrbitControls プラグインの読み込み -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+  <script>
+    // --- 1. Three.js の基本セットアップ ---
+    // HTML要素を取得（3Dを表示する場所）
+    const container = document.getElementById('canvas-container');
+    // HTML要素を取得（案内メッセージ表示用）
+    const guideMsg = document.getElementById('guide-message');
+    // 3D空間（シーン）を作成
+    const scene = new THREE.Scene();
+    // シーンの背景色を暗いグレーに設定
+    scene.background = new THREE.Color(0x222222);
+
+    // カメラを作成（視野角45度, アスペクト比, 描画開始距離0.1, 描画終了距離1000）
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+    // カメラの初期位置を決定 (X, Y, Z)
+    camera.position.set(0, 8, 20);
+
+    // WebGLレンダラー（描画エンジン）を作成（アンチエイリアス有効で滑らかに）
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    // レンダラーのサイズを画面全体に設定
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    // 解像度の調整（Retinaディスプレイ等に対応）
+    renderer.setPixelRatio(window.devicePixelRatio);
+    // レンダラーのHTML要素（canvas）をコンテナに追加
+    container.appendChild(renderer.domElement);
+
+    // カメラのドラッグ操作用コントローラーを作成
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    // 操作の慣性（ぬるっと動く感覚）を有効化
+    controls.enableDamping = true;
+
+    // 全体を均等に照らす環境光を作成してシーンに追加
+    scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+    // 影や立体感を作る平行光源（太陽光のような光）を作成
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    // 光の向きを設定
+    dirLight.position.set(10, 20, 15);
+    // 光をシーンに追加
+    scene.add(dirLight);
+
+    // 床のマス目（グリッド）を作成（サイズ30, 分割数30, 色線）
+    const grid = new THREE.GridHelper(30, 30, 0x444444, 0x333333);
+    // グリッドの高さを足元に配置
+    grid.position.y = -8;
+    // グリッドをシーンに追加
+    scene.add(grid);
+
+    // --- 2. 物理演算のデータ構造クラス定義 ---
+    // 現在選択されているステップ番号 (1, 2, 3)
+    let currentStep = 1;
+    // ひっくり返しフラグ（ステップ3でtrueになる）
+    let isFlipped = false;
+    
+    // シーン内に存在するすべての物理粒子（パーティクル）を保持する配列
+    let allParticles = [];
+    // シーン内に存在するすべての距離拘束（バネ）を保持する配列
+    const allConstraints = [];
+    // 生成された紐の描画オブジェクト群を保持する配列
+    const lineMeshes = [];
+    // マウスクリック判定の対象にする全メッシュ（土台のドット＋重り）を保持する配列
+    const clickableMeshes = [];
+
+    // 物理粒子（パーティクル）クラスの定義
+    class Particle {
+      // コンストラクタ（初期座標と固定点フラグを受け取る）
+      constructor(x, y, z, isFixed = false) {
+        this.pos = new THREE.Vector3(x, y, z); // 現在の座標
+        this.oldPos = new THREE.Vector3(x, y, z); // 1フレーム前の座標
+        this.isFixed = isFixed; // 固定点かどうかの判定（土台に繋がる点はtrue）
+        this.mass = 1.0; // 粒子の質量（おもりが付くと重くなる）
+      }
+
+      // 物理位置の更新関数（Verlet積分公式）
+      update(dt, gravity) {
+        // 固定点なら何もしない
+        if (this.isFixed) return;
+        // 速度ベクトル（現在位置 - 過去位置）を計算
+        const vel = this.pos.clone().sub(this.oldPos);
+        // 過去位置を現在の位置で上書き
+        this.oldPos.copy(this.pos);
+        // ひっくり返っている場合は重力の向きを上下反転させる
+        const g = isFlipped ? -gravity : gravity;
+        // 位置に速度を加算（慣性移動）
+        this.pos.add(vel);
+        // 重力による落下の加算（y = y - g * dt^2 * mass）
+        this.pos.y -= g * dt * dt * this.mass;
+      }
+    }
+
+    // 2点間の距離を維持する「拘束（コンストレイント）」クラス
+    class Constraint {
+      constructor(p1, p2, dist) {
+        this.p1 = p1; // 粒子1
+        this.p2 = p2; // 粒子2
+        this.distance = dist || p1.pos.distanceTo(p2.pos); // 維持すべき自然長距離
+      }
+
+      // 伸び縮みを計算して元の距離へ強制補正する関数
+      solve() {
+        // p1とp2の現在の差分ベクトルを計算
+        const diff = this.p1.pos.clone().sub(this.p2.pos);
+        // 現在の距離を取得
+        const currentDist = diff.length();
+        if (currentDist === 0) return; // 0除算防止
+        // 本来の長さからのズレの割合を計算
+        const delta = (currentDist - this.distance) / currentDist;
+        // 補正ベクトル（Half Delta）を計算
+        const corr = diff.multiplyScalar(0.5 * delta);
+
+        // p1が固定点でなければ補正ベクトル分引き戻す
+        if (!this.p1.isFixed) this.p1.pos.sub(corr);
+        // p2が固定点でなければ補正ベクトル分押し戻す
+        if (!this.p2.isFixed) this.p2.pos.add(corr);
+      }
+    }
+
+    // --- 3. 土台（リング＆外側＋内側のドット）の作成 ---
+    // 楕円リングの横半径
+    const RING_RADIUS_X = 6;
+    // 楕円リングの縦半径
+    const RING_RADIUS_Z = 6;
+    // 土台の高さを設定
+    const BASE_Y = 5;
+
+    // 楕円の軌道（曲線データ）を作成
+    const curve = new THREE.EllipseCurve(0, 0, RING_RADIUS_X, RING_RADIUS_Z, 0, 2 * Math.PI, false, 0);
+    // 曲線から80個の点を抽出してジオメトリ（形状）を作成
+    const ellipseGeo = new THREE.BufferGeometry().setFromPoints(curve.getPoints(80));
+    // グレーの線マテリアル（見た目）を作成
+    const ellipse = new THREE.Line(ellipseGeo, new THREE.LineBasicMaterial({ color: 0x555555 }));
+    // 楕円を水平に寝かせるための回転設定
+    ellipse.rotation.x = Math.PI / 2;
+    // 楕円の高さをBASE_Yの位置へ移動
+    ellipse.position.y = BASE_Y;
+    // 楕円リングをシーンに追加
+    scene.add(ellipse);
+
+    // ドット用の小さな球体ジオメトリを作成（半径0.18）
+    const dotGeo = new THREE.SphereGeometry(0.18, 16, 16);
+    // 通常時のマテリアル（薄いグレー）
+    const normalMat = new THREE.MeshBasicMaterial({ color: 0xaaaaaa });
+
+    // 【外周のドット配置】円周上に16個配置
+    const NUM_OUTER_ANCHORS = 16;
+    for (let i = 0; i < NUM_OUTER_ANCHORS; i++) {
+      // 円周上の角度を計算
+      const angle = (i / NUM_OUTER_ANCHORS) * Math.PI * 2;
+      // 角度からX座標を計算
+      const x = Math.cos(angle) * RING_RADIUS_X;
+      // 角度からZ座標を計算
+      const z = Math.sin(angle) * RING_RADIUS_Z;
+
+      // ドットメッシュを作成
+      const dotMesh = new THREE.Mesh(dotGeo, normalMat.clone());
+      // 計算した位置に配置
+      dotMesh.position.set(x, BASE_Y, z);
+      // 土台の固定粒子（isFixed=true）を作成して物理パーティクル配列に追加
+      const anchorParticle = new Particle(x, BASE_Y, z, true);
+      allParticles.push(anchorParticle);
+      // メッシュの userData にパーティクルと元の色を保持させる
+      dotMesh.userData = { particle: anchorParticle, originalColor: 0xaaaaaa };
+      // シーンに追加
+      scene.add(dotMesh);
+      // クリック判定対象の配列に追加
+      clickableMeshes.push(dotMesh);
+    }
+
+    // 【内側のドット配置】グリッド状に均等配置（円の内側に入るものだけ採用）
+    const GRID_SPACING_X = 2.8; // X方向の間隔
+    const GRID_SPACING_Z = 2.2; // Z方向の間隔
+    for (let x = -RING_RADIUS_X + GRID_SPACING_X; x <= RING_RADIUS_X - GRID_SPACING_X; x += GRID_SPACING_X) {
+      for (let z = -RING_RADIUS_Z + GRID_SPACING_Z; z <= RING_RADIUS_Z - GRID_SPACING_Z; z += GRID_SPACING_Z) {
+        // 楕円の方程式で内側かどうかの判定
+        if ((Math.pow(x / RING_RADIUS_X, 2) + Math.pow(z / RING_RADIUS_Z, 2)) < 0.85) {
+          const dotMesh = new THREE.Mesh(dotGeo, normalMat.clone());
+          dotMesh.position.set(x, BASE_Y, z);
+          const anchorParticle = new Particle(x, BASE_Y, z, true);
+          allParticles.push(anchorParticle);
+          dotMesh.userData = { particle: anchorParticle, originalColor: 0xaaaaaa };
+          scene.add(dotMesh);
+          clickableMeshes.push(dotMesh);
+        }
+      }
+    }
+
+    // --- 4. 紐・おもり作成ロジック ---
+    // 紐用のマテリアル（水色）
+    const lineMat = new THREE.LineBasicMaterial({ color: 0x00aaff, linewidth: 2 });
+    // 錘（おもり）用の球体ジオメトリ
+    const weightGeo = new THREE.SphereGeometry(0.25, 16, 16);
+    // 錘用のマテリアル（ピンク色）
+    const weightMat = new THREE.MeshStandardMaterial({ color: 0xff3366 });
+
+    // 任意2個の物理パーティクル間に1本の紐を追加する関数
+    function addStrandBetweenParticles(p1, p2, numSegments = 16, slackFactor = 1.35) {
+      const strandParticles = []; // この紐単体の粒子配列
+      const dist = p1.pos.distanceTo(p2.pos); // 2点間の直線距離
+      // 自然長を直線距離の1.35倍にしてたわみを生成
+      const segmentLength = (dist * slackFactor) / numSegments;
+
+      // Three.jsの描画用ラインジオメトリを作成
+      const lineGeo = new THREE.BufferGeometry();
+      const positions = new Float32Array((numSegments + 1) * 3);
+      lineGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      const lineMesh = new THREE.Line(lineGeo, lineMat);
+      scene.add(lineMesh);
+
+      // 分割数に応じて粒子を中間生成
+      for (let i = 0; i <= numSegments; i++) {
+        let p;
+        if (i === 0) {
+          p = p1; // 端点1は指定された既存の物理粒子に直接連結
+        } else if (i === numSegments) {
+          p = p2; // 端点2も指定された既存の物理粒子に直接連結
+        } else {
+          // 途中の粒子を新規作成
+          const t = i / numSegments;
+          const pos = new THREE.Vector3().lerpVectors(p1.pos, p2.pos, t);
+          p = new Particle(pos.x, pos.y, pos.z, false);
+          allParticles.push(p);
+        }
+
+        strandParticles.push(p);
+
+        // 隣り合う粒子間に拘束（バネ）を作成
+        if (i > 0) {
+          allConstraints.push(new Constraint(strandParticles[i - 1], p, segmentLength));
+        }
+      }
+
+      // 紐の中央粒子を取得
+      const midParticle = strandParticles[Math.floor(strandParticles.length / 2)];
+      // おもり（球体）メッシュを作成
+      const wMesh = new THREE.Mesh(weightGeo, weightMat.clone());
+      wMesh.visible = (currentStep === 2);
+      // おもりメッシュの userData にもこの中央粒子を関連付ける（これで重りもクリック選択可能になる！）
+      wMesh.userData = { particle: midParticle, originalColor: 0xff3366 };
+      scene.add(wMesh);
+      clickableMeshes.push(wMesh); // レイキャストクリック対象に追加
+
+      // ステップ2実行中に紐を追加した場合は中央の粒子を重く設定
+      if (currentStep === 2) midParticle.mass = 10.0;
+
+      // 情報オブジェクトを配列に保持
+      lineMeshes.push({ mesh: lineMesh, particles: strandParticles, midParticle, wMesh });
+    }
+
+    // すべての紐を画面から消去（リセット）する関数
+    function resetStrands() {
+      lineMeshes.forEach(item => {
+        scene.remove(item.mesh);
+        scene.remove(item.wMesh);
+        // クリック対象配列から削除したおもりを取り除く
+        const idx = clickableMeshes.indexOf(item.wMesh);
+        if (idx > -1) clickableMeshes.splice(idx, 1);
+      });
+      lineMeshes.length = 0;
+      allConstraints.length = 0;
+
+      // 生成された自由粒子のみ消去（土台の固定粒子 isFixed=true は残す）
+      allParticles = allParticles.filter(p => p.isFixed);
+
+      // 選択中だったドットがあれば選択解除する
+      if (selectedAnchor) {
+        selectedAnchor.material.color.setHex(selectedAnchor.userData.originalColor);
+        selectedAnchor = null;
+      }
+      guideMsg.textContent = "💡 1つ目のドット（土台または重り）をクリックしてください";
+    }
+
+    // --- 5. マウス操作（Raycaster）によるドット選択 ---
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+    let selectedAnchor = null; // 1つ目に選択されたオブジェクト（土台ドットまたは重り）
+    let hoveredAnchor = null;  // 現在ホバー中のオブジェクト
+
+    // マウス移動イベント
+    window.addEventListener('pointermove', (e) => {
+      // マウス座標を正規化（-1 〜 +1）
+      mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+      raycaster.setFromCamera(mouse, camera);
+      // 土台ドットとおもりの両方に対してレイキャスト交差判定
+      const intersects = raycaster.intersectObjects(clickableMeshes);
+
+      // 前回ホバーしたメッシュの色を元の色に戻す
+      if (hoveredAnchor && hoveredAnchor !== selectedAnchor) {
+        hoveredAnchor.material.color.setHex(hoveredAnchor.userData.originalColor);
+      }
+
+      // 何かにホバーした場合
+      if (intersects.length > 0) {
+        hoveredAnchor = intersects[0].object;
+        if (hoveredAnchor !== selectedAnchor) {
+          hoveredAnchor.material.color.setHex(0x4db8ff); // ホバー色（水色）に変更
+        }
+        container.style.cursor = 'pointer';
+      } else {
+        hoveredAnchor = null;
+        container.style.cursor = 'default';
+      }
+    });
+
+    // マウスクリックイベント
+    window.addEventListener('click', (e) => {
+      // UI要素の上のクリックは無視する
+      if (e.target.closest('#ui-container') || e.target.closest('#reset-btn')) return;
+
+      raycaster.setFromCamera(mouse, camera);
+      const intersects = raycaster.intersectObjects(clickableMeshes);
+
+      if (intersects.length > 0) {
+        const clicked = intersects[0].object;
+
+        if (!selectedAnchor) {
+          // --- 1つ目のドット（または重り）を選択 ---
+          selectedAnchor = clicked;
+          selectedAnchor.material.color.setHex(0x00ff88); // 選択状態の色（緑色）に変更
+          guideMsg.textContent = "💡 2つ目のドットをクリックして紐を結んでください";
+        } else if (selectedAnchor !== clicked) {
+          // --- 2つ目のドット（または重り）を選択して紐で連結 ---
+          addStrandBetweenParticles(
+            selectedAnchor.userData.particle,
+            clicked.userData.particle
+          );
+          selectedAnchor.material.color.setHex(selectedAnchor.userData.originalColor); // 元の色に戻す
+          selectedAnchor = null; // 選択解除
+          guideMsg.textContent = "✨ 紐が結ばれました！他のドットとも結んでみましょう";
+        }
+      }
+    });
+
+    // --- 6. 初期サンプルの紐の配置 ---
+    // 土台ドットが存在すれば初期紐を2本張っておく
+    if (clickableMeshes.length > 16) {
+      addStrandBetweenParticles(clickableMeshes[0].userData.particle, clickableMeshes[18].userData.particle);
+      addStrandBetweenParticles(clickableMeshes[8].userData.particle, clickableMeshes[18].userData.particle);
+    }
+
+    // --- 7. ステップ切替処理 ---
+    function setStep(step) {
+      currentStep = step;
+      // UIカードの選択状態変更
+      document.querySelectorAll('.step-card').forEach(c => c.classList.remove('active'));
+      document.getElementById(`card-step${step}`).classList.add('active');
+
+      // ステップ3のみ重力反転
+      isFlipped = (step === 3);
+
+      // すべての紐のおもり表示と重さを更新
+      lineMeshes.forEach(item => {
+        if (step === 2) {
+          item.midParticle.mass = 10.0; // 質量増加
+          item.wMesh.visible = true;    // おもり表示
+        } else {
+          item.midParticle.mass = 1.0;  // 通常の質量
+          item.wMesh.visible = false;   // おもり非表示
+        }
+      });
+    }
+
+    // --- 8. メイン描画・物理計算ループ ---
+    const gravity = 9.8; // 重力加速度
+    const dt = 0.016;    // タイムステップ（1/60秒）
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      // 【A. 物理計算の更新】
+      // 全粒子の慣性と重力位置計算
+      allParticles.forEach(p => p.update(dt, gravity));
+
+      // 距離補正を10回反復実行して紐の張りを維持
+      for (let i = 0; i < 10; i++) {
+        allConstraints.forEach(c => c.solve());
+      }
+
+      // 【B. Three.js描画と重り位置の同期】
+      lineMeshes.forEach(item => {
+        const posAttr = item.mesh.geometry.attributes.position;
+        item.particles.forEach((p, idx) => {
+          posAttr.setXYZ(idx, p.pos.x, p.pos.y, p.pos.z);
+        });
+        posAttr.needsUpdate = true;
+
+        // おもりメッシュの位置を物理粒子へ同期移動
+        item.wMesh.position.copy(item.midParticle.pos);
+      });
+
+      // カメラ制御の更新
+      controls.update();
+      // レンダラーでシーンをレンダリング
+      renderer.render(scene, camera);
+    }
+
+    // ウインドウリサイズ対応
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // メインループスタート
+    animate();
+  </script>
+</body>
+</html>
