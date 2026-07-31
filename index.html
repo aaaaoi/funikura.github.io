@@ -1,430 +1,502 @@
 <!DOCTYPE html>
+<!-- 文書型宣言：HTML5規格で書かれていることを指定 -->
 <html lang="ja">
+<!-- 言語を日本語に設定してHTML要素を開始 -->
 <head>
+  <!-- 文字コードをUTF-8に設定 -->
   <meta charset="UTF-8">
+  <!-- モバイル端末での表示を最適化するビューポート設定 -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- ブラウザのタブに表示されるタイトル -->
   <title>ガウディ・フニクラ模型シミュレーター</title>
   <style>
+    /* 全要素のボックスサイズ指定をborder-boxにし、余白を初期化 */
     * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
+      box-sizing: border-box; /* 要素の幅と高さにパディングとボーダーを含める */
+      margin: 0; /* 外側の余白をゼロにリセット */
+      padding: 0; /* 内側の余白をゼロにリセット */
     }
+    /* 画面全体（body要素）のスタイル */
     body {
-      overflow: hidden;
-      background-color: #121214;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      user-select: none;
-      color: #e0e0e0;
+      overflow: hidden; /* スクロールバーを表示しない */
+      background-color: #121214; /* 暗い背景色を設定 */
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; /* システムフォント優先の設定 */
+      user-select: none; /* テキストの選択を無効化 */
+      color: #e0e0e0; /* 基本の文字色を薄いグレーに設定 */
     }
+    /* 3Dキャンバスを入れるコンテナ */
     #canvas-container {
-      width: 100vw;
-      height: 100vh;
+      width: 100vw; /* 画面幅いっぱいに設定 */
+      height: 100vh; /* 画面高さいっぱいに設定 */
     }
     /* UIパネル (ガラスモルフィズムデザイン) */
     #ui-panel {
-      position: absolute;
-      top: 20px;
-      left: 20px;
-      background: rgba(22, 22, 26, 0.75);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      padding: 20px;
-      border-radius: 16px;
-      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
-      backdrop-filter: blur(12px);
-      width: 320px;
-      z-index: 10;
+      position: absolute; /* 3Dキャンバスの上に重ねて配置 */
+      top: 20px; /* 上から20pxの位置 */
+      left: 20px; /* 左から20pxの位置 */
+      background: rgba(22, 22, 26, 0.75); /* 半透明のダークグレー背景 */
+      border: 1px solid rgba(255, 255, 255, 0.1); /* 控えめな白い枠線 */
+      padding: 20px; /* パネル内部の余白 */
+      border-radius: 16px; /* 角丸半径 */
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6); /* 影をつけて立体感を出す */
+      backdrop-filter: blur(12px); /* 背景をぼかすガラス風エフェクト */
+      width: 250px; /* パネルの固定幅 */
+      z-index: 10; /* 最前面に表示されるよう重なり順を設定 */
     }
-    h1 {
-      font-size: 1.15rem;
-      font-weight: 700;
-      letter-spacing: 0.05em;
-      margin-bottom: 6px;
-      color: #ffffff;
-    }
-    p.description {
-      font-size: 0.8rem;
-      color: #a0a0aa;
-      line-height: 1.4;
-      margin-bottom: 18px;
-    }
+    /* スライダー全体を囲むグループボックス */
     .slider-group {
-      background: rgba(0, 0, 0, 0.25);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 8px;
-      padding: 12px;
-      margin-bottom: 16px;
+      background: rgba(0, 0, 0, 0.25); /* より暗い半透明背景 */
+      border: 1px solid rgba(255, 255, 255, 0.08); /* 細い枠線 */
+      border-radius: 8px; /* 角丸設定 */
+      padding: 12px; /* 内側余白 */
+      margin-bottom: 16px; /* 下方向の余白 */
     }
+    /* スライダー上のラベル部分（テキストと数値を両端揃え） */
     .slider-label {
-      display: flex;
-      justify-content: space-between;
-      font-size: 0.8rem;
-      color: #ccc;
-      margin-bottom: 8px;
-      font-weight: 600;
+      display: flex; /* フレックスボックスレイアウト */
+      justify-content: space-between; /* 左右に均等配置 */
+      font-size: 0.8rem; /* 文字サイズ */
+      color: #ccc; /* 文字色 */
+      margin-bottom: 8px; /* 下方向の余白 */
+      font-weight: 600; /* 少し太字 */
     }
+    /* スライダーの現在の数値を表示する強調スパン */
     .slider-label span.val {
-      color: #3b82f6;
+      color: #3b82f6; /* 青色のアクセントカラー */
     }
+    /* スライダーバー自体のスタイル */
     input[type="range"] {
-      width: 100%;
-      accent-color: #3b82f6;
-      cursor: pointer;
+      width: 100%; /* 親要素いっぱいに伸ばす */
+      accent-color: #3b82f6; /* つまみのアクセントカラー */
+      cursor: pointer; /* マウスホバーでポインターにする */
     }
+    /* ボタンを横並びで配置するグループ */
     .mode-group {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      margin-bottom: 16px;
+      display: flex; /* フレックスボックス */
+      flex-direction: row; /* 横方向に並べる */
+      gap: 8px; /* ボタン同士の間隔 */
+      margin-bottom: 16px; /* 下方向の余白 */
     }
+    /* 共通ボタンのベーススタイル */
     .btn {
-      display: flex;
-      align-items: center;
-      justify-content: flex-start;
-      gap: 10px;
-      width: 100%;
-      padding: 12px 14px;
-      background: rgba(255, 255, 255, 0.05);
-      color: #d0d0d5;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 0.85rem;
-      font-weight: 600;
-      transition: all 0.2s ease;
+      display: flex; /* フレックスボックス */
+      align-items: center; /* 垂直方向中央揃え */
+      justify-content: center; /* 中央寄せ配置 */
+      width: 100%; /* パネル幅いっぱいに指定 */
+      padding: 12px 14px; /* 内側余白 */
+      background: rgba(255, 255, 255, 0.05); /* うっすらとした半透明背景 */
+      color: #d0d0d5; /* 文字色 */
+      border: 1px solid rgba(255, 255, 255, 0.08); /* 枠線 */
+      border-radius: 8px; /* 角丸設定 */
+      cursor: pointer; /* ポインター表示 */
+      font-size: 0.85rem; /* 文字サイズ */
+      font-weight: 600; /* 少し太字 */
+      transition: all 0.2s ease; /* ホバー時の変化アニメーション */
     }
+    /* ボタンにマウスを乗せたときの共通装飾 */
     .btn:hover {
-      background: rgba(255, 255, 255, 0.12);
-      color: #ffffff;
-      border-color: rgba(255, 255, 255, 0.2);
+      background: rgba(255, 255, 255, 0.12); /* 背景を明るく */
+      color: #ffffff; /* 文字を白に */
+      border-color: rgba(255, 255, 255, 0.2); /* 枠線を明確に */
     }
+    /* 反転ボタンの個別デザイン */
     .btn-invert {
-      background: rgba(16, 185, 129, 0.15);
-      border-color: rgba(16, 185, 129, 0.3);
-      color: #34d399;
+      background: rgba(16, 185, 129, 0.15); /* エメラルドグリーンの半透明背景 */
+      border-color: rgba(16, 185, 129, 0.3); /* グリーン系の枠線 */
+      color: #34d399; /* グリーン系の文字色 */
     }
+    /* 反転ボタンのホバー時装飾 */
     .btn-invert:hover {
-      background: rgba(16, 185, 129, 0.3);
-      color: #6ee7b7;
+      background: rgba(16, 185, 129, 0.3); /* グリーン背景を濃く */
+      color: #6ee7b7; /* 文字色を明るく */
     }
+    /* クリアボタンの個別デザイン */
     .btn-reset {
-      background: rgba(239, 68, 68, 0.1);
-      border-color: rgba(239, 68, 68, 0.2);
-      color: #f87171;
+      background: rgba(239, 68, 68, 0.1); /* レッド系の半透明背景 */
+      border-color: rgba(239, 68, 68, 0.2); /* レッド系の枠線 */
+      color: #f87171; /* レッド系の文字色 */
     }
+    /* クリアボタンのホバー時装飾 */
     .btn-reset:hover {
-      background: rgba(239, 68, 68, 0.25);
-      color: #fca5a5;
+      background: rgba(239, 68, 68, 0.25); /* レッド背景を濃く */
+      color: #fca5a5; /* 文字色を明るく */
     }
+    /* 下部に案内メッセージを表示するステータスボックス */
     #status-box {
-      background: rgba(0, 0, 0, 0.3);
-      border-radius: 8px;
-      padding: 10px 12px;
-      font-size: 0.8rem;
-      color: #fbbf24;
-      border-left: 3px solid #fbbf24;
-      line-height: 1.4;
-    }
-    .legend {
-      display: flex;
-      justify-content: space-between;
-      margin-top: 15px;
-      padding-top: 12px;
-      border-top: 1px solid rgba(255, 255, 255, 0.08);
-      font-size: 0.75rem;
-      color: #888;
-    }
-    .legend-item {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
-    .dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.3); /* 暗い半透明背景 */
+      border-radius: 8px; /* 角丸設定 */
+      padding: 10px 12px; /* 内側余白 */
+      font-size: 0.8rem; /* 小さめ文字 */
+      color: #fbbf24; /* 黄金色の文字（アクセント） */
+      border-left: 3px solid #fbbf24; /* 左側にイエローの境界線アクセント */
+      line-height: 1.4; /* 行高の設定 */
     }
   </style>
 
-  <!-- Three.js & OrbitControls -->
+  <!-- Three.js 3Dライブラリ（r128）を外部CDNから読み込み -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <!-- マウスでカメラを回転・ズーム操作するための OrbitControls プラグインの読み込み -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 </head>
 <body>
 
+  <!-- 左上に配置されるUIパネル -->
   <div id="ui-panel">
-    <!-- <h1>FUNIKURA MODEL</h1> -->
-    <p class="description">ガウディの逆さ吊り実験（フニクラ）シミュレーター</p>
-    
+    <!-- 紐のたるみ倍率を変更するスライダーグループ -->
     <div class="slider-group">
       <div class="slider-label">
-        <span>🧵 紐のたるみ倍率</span>
+        <span>紐のたるみ倍率</span>
+        <!-- スライダーで選択されている数値をリアルタイム表示する場所 -->
         <span id="slack-val" class="val">1.3x</span>
       </div>
+      <!-- 最小1.0、最大2.5、0.1刻みの範囲調整スライダー要素 -->
       <input type="range" id="slack-slider" min="1.0" max="2.5" step="0.1" value="1.3">
     </div>
 
+    <!-- 操作ボタンのグループ -->
     <div class="mode-group">
+      <!-- 反転動作用のボタン -->
       <button id="btn-invert" class="btn btn-invert">
-        <span>🔄</span> 上下反転（アーチ化）
+        反転
       </button>
+      <!-- 張った紐をすべて削除するリセットボタン -->
       <button id="btn-reset" class="btn btn-reset">
-        <span>🗑️</span> クリア
+        クリア
       </button>
     </div>
 
+    <!-- ユーザーへの案内テキスト表示領域 -->
     <div id="status-box">基点（オレンジの点）を選んで紐を張ってください。</div>
   </div>
 
+  <!-- 3D表示を張り付ける領域 -->
   <div id="canvas-container"></div>
 
   <script>
-    // --- 1. Scene & Renderer Setup ---
+    // --- 1. Scene & Renderer Setup (シーン・カメラ・レンダラーの設定) ---
+    // 3Dを描画する親HTML要素を取得
     const container = document.getElementById('canvas-container');
+    // Three.jsの3D空間（シーン）を作成
     const scene = new THREE.Scene();
+    // シーンの背景色を暗いグレー（#121214）に指定
     scene.background = new THREE.Color(0x121214);
 
+    // 透視投影カメラを作成（画角45度、アスペクト比、描画開始距離0.1、描画終了距離1000）
     const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+    // カメラの初期座標を設定 (X:0, Y:4, Z:30)
     camera.position.set(0, 4, 30);
 
+    // WebGLレンダラーを作成（アンチエイリアスを有効にして境界を滑らかに）
     const renderer = new THREE.WebGLRenderer({ antialias: true });
+    // レンダラーの解像度をウィンドウ幅いっぱいに設定
     renderer.setSize(window.innerWidth, window.innerHeight);
+    // デバイスのピクセル比（高解像度ディスプレイ対応、上限2倍に制限）を設定
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    // 影の描画機能を有効化
     renderer.shadowMap.enabled = true;
+    // レンダラーが生成したcanvas要素をHTMLコンテナに追加
     container.appendChild(renderer.domElement);
 
+    // マウスドラッグで視点を動かす OrbitControls を設定
     const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    // 操作後の視点移動に滑らかな慣性（ダンピング）効果を有効化
     controls.enableDamping = true;
+    // 慣性の摩擦係数（数値が小さいほどぬるっと動く）を設定
     controls.dampingFactor = 0.05;
+    // カメラの注視点ターゲットを (0, 4, 0) の位置に設定
     controls.target.set(0, 4, 0);
 
-    // ライティング
+    // ライティング（照明）の設定
+    // 空間全体を均等に照らす環境光を作成（白色、強度0.7）
     scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+    // 影や光沢を作る平行光源（太陽光に似た直進光）を作成
     const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    // 光源の設置位置を設定
     dirLight.position.set(10, 20, 15);
+    // 光源をシーンに追加
     scene.add(dirLight);
 
-    // --- 2. Model Structure ---
+    // --- 2. Model Structure (モデル全体の階層構造の構築) ---
+    // 全体を反転（180度回転）させる際のアニメーション基準軸用グループを作成
     const pivotGroup = new THREE.Group();
+    // 反転グループをシーンに追加
     scene.add(pivotGroup);
 
+    // 天井リングや紐モデルをまとめるグループを作成
     const modelGroup = new THREE.Group();
+    // モデルグループを pivotGroup の子として追加（これで pivotGroup を回せば全体が回る）
     pivotGroup.add(modelGroup);
 
-    // 天井フレーム (円環)
-    const baseRadius = 8;
-    const baseHeight = 12;
+    // 天井フレーム (土台となるトーラス/円環) の設定
+    const baseRadius = 8; // 円環の半径
+    const baseHeight = 10; // 円環の配置高さ(Y座標)
+    // トーラス（ドーナツ型）ジオメトリを作成 (半径8、管の太さ0.08、断面分割数16、円周分割数64)
     const ringGeom = new THREE.TorusGeometry(baseRadius, 0.08, 16, 64);
+    // 質感（マテリアル）の設定（ダークグレー、荒さ0.5）
     const ringMat = new THREE.MeshStandardMaterial({ color: 0x44444c, roughness: 0.5 });
+    // メッシュ（形状＋見た目）を作成
     const ringMesh = new THREE.Mesh(ringGeom, ringMat);
+    // X軸まわりに90度回転させて水平にする
     ringMesh.rotation.x = Math.PI / 2;
+    // 天井の高さまでY移動させる
     ringMesh.position.y = baseHeight;
+    // モデルグループに追加
     modelGroup.add(ringMesh);
 
-    // 天井の十字・放射ガイドフレーム
-    const gridHelperGeom = new THREE.BufferGeometry();
-    const gridMat = new THREE.LineBasicMaterial({ color: 0x33333b, transparent: true, opacity: 0.6 });
-    const gridLines = [];
+    // 天井の十字・放射ガイドフレーム（円の内側の補助線）の作成
+    const gridHelperGeom = new THREE.BufferGeometry(); // 線の位置用ジオメトリ
+    const gridMat = new THREE.LineBasicMaterial({ color: 0x33333b, transparent: true, opacity: 0.6 }); // 薄い暗色の線マテリアル
+    const gridLines = []; // 線を引くための頂点データ配列
     
+    // 内側リングの半径比率（35% と 70% の2重円を作成）
     for (let r of [0.35, 0.7]) {
-      const radius = baseRadius * r;
+      const radius = baseRadius * r; // 実際の半径
+      // 32分割で多角形（近似的な円）を描画する頂点を計算
       for (let i = 0; i < 32; i++) {
-        const a1 = (i / 32) * Math.PI * 2;
-        const a2 = ((i + 1) / 32) * Math.PI * 2;
+        const a1 = (i / 32) * Math.PI * 2; // 始点角度
+        const a2 = ((i + 1) / 32) * Math.PI * 2; // 終点角度
+        // 始点座標 (X, Y, Z) を配列に追加
         gridLines.push(Math.cos(a1) * radius, baseHeight, Math.sin(a1) * radius);
+        // 終点座標 (X, Y, Z) を配列に追加
         gridLines.push(Math.cos(a2) * radius, baseHeight, Math.sin(a2) * radius);
       }
     }
+    // 配列の座標データをジオメトリの position 属性として登録
     gridHelperGeom.setAttribute('position', new THREE.Float32BufferAttribute(gridLines, 3));
+    // 線セグメントメッシュとしてモデルグループに追加
     modelGroup.add(new THREE.LineSegments(gridHelperGeom, gridMat));
 
-    // --- 3. Physics & Node Engine ---
-    const GRAVITY = -0.008;
-    const ITERATIONS = 12;
-    let nodes = [];
-    let constraints = [];
-    let selectedNodes = [];
-    let isInverted = false;
-    let hoveredNode = null;
-    let slackFactor = 1.3; // 紐のたるみ倍率のデフォルト値
+    // --- 3. Physics & Node Engine (物理演算・質点・バネエンジン) ---
+    const GRAVITY = -0.008; // 下向きの重力加速度
+    const ITERATIONS = 12; // 1フレームあたりのバネ伸び正しの反復計算回数（高いと硬くなる）
+    let nodes = []; // 全てのノード（質点）データが入る配列
+    let constraints = []; // 全てのバネ拘束データが入る配列
+    let selectedNodes = []; // ユーザーが現在選択中のノード（最大2個）
+    let isInverted = false; // 上下反転モード中かどうかのフラグ
+    let hoveredNode = null; // 現在マウスカーソルが重なっているノード
+    let slackFactor = 1.3; // 紐のたるみ倍率の初期値（直線距離の1.3倍の長さで生成）
 
-    const raycastTargets = [];
-    const raycaster = new THREE.Raycaster();
-    const mouse = new THREE.Vector2();
+    const raycastTargets = []; // マウスクリック判定（レイキャスト）の対象メッシュ配列
+    const raycaster = new THREE.Raycaster(); // マウスと3Dオブジェクトの交差判定用オブジェクト
+    const mouse = new THREE.Vector2(); // マウスの2Dスクリーン座標を記憶するベクトル
 
+    // 単一のノード（点）を生成して物理システムに登録する関数
     function createNode(x, y, z, isFixed = false) {
+      // ノードの物理データオブジェクトを作成
       const node = {
-        id: nodes.length,
-        pos: new THREE.Vector3(x, y, z),
-        oldPos: new THREE.Vector3(x, y, z),
-        isFixed: isFixed,
-        mass: 1.0,
-        mesh: null,
-        hitMesh: null
+        id: nodes.length, // 一意のID
+        pos: new THREE.Vector3(x, y, z), // 現在の座標
+        oldPos: new THREE.Vector3(x, y, z), // 1フレーム前の座標 (Verlet積分用)
+        isFixed: isFixed, // 固定点（天井の基点）かどうか
+        mass: 1.0, // 質量
+        mesh: null, // 見た目用スフィアメッシュ
+        hitMesh: null // マウスクリック判定用の透明な大きめのメッシュ
       };
 
+      // 表示用の球体を作成（固定点は大きく0.3、紐の結び目は小さく0.15）
       const geom = new THREE.SphereGeometry(isFixed ? 0.3 : 0.15, 16, 16);
+      // 固定点はオレンジ色(0xf97316)、それ以外は水色(0x38bdf8)
       const color = isFixed ? 0xf97316 : 0x38bdf8;
       const mat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.3 });
       const mesh = new THREE.Mesh(geom, mat);
-      mesh.position.copy(node.pos);
-      modelGroup.add(mesh);
-      node.mesh = mesh;
+      mesh.position.copy(node.pos); // 初期位置へ移動
+      modelGroup.add(mesh); // モデルグループに追加
+      node.mesh = mesh; // ノードにメッシュ参照を保存
 
+      // クリック操作しやすくするため、透明な当たり判定用の大きな球体を作成
       const hitGeom = new THREE.SphereGeometry(isFixed ? 0.6 : 0.4, 12, 12);
-      const hitMat = new THREE.MeshBasicMaterial({ visible: false });
+      const hitMat = new THREE.MeshBasicMaterial({ visible: false }); // 描画は非表示にする
       const hitMesh = new THREE.Mesh(hitGeom, hitMat);
-      hitMesh.position.copy(node.pos);
-      hitMesh.userData = { node: node };
-      modelGroup.add(hitMesh);
-      node.hitMesh = hitMesh;
+      hitMesh.position.copy(node.pos); // 位置合わせ
+      hitMesh.userData = { node: node }; // ヒットした時に元のノードを取得できるよう参照を格納
+      modelGroup.add(hitMesh); // モデルグループに追加
+      node.hitMesh = hitMesh; // ノードにヒットメッシュ参照を保存
 
-      nodes.push(node);
-      raycastTargets.push(hitMesh);
-      return node;
+      nodes.push(node); // ノード一覧配列に追加
+      raycastTargets.push(hitMesh); // レイキャスト判定用配列に追加
+      return node; // 生成したノードを返す
     }
 
-    // 基点の配置
+    // 天井の固定点（基点）の配置生成
+    // 中心点 (0, baseHeight, 0) に基点を配置
     createNode(0, baseHeight, 0, true);
 
+    // 内側の円（35%位置）に6個の基点を等間隔配置
     const innerDots = 6;
     for (let i = 0; i < innerDots; i++) {
-      const angle = (i / innerDots) * Math.PI * 2;
-      const r = baseRadius * 0.35;
+      const angle = (i / innerDots) * Math.PI * 2; // 角度計算
+      const r = baseRadius * 0.35; // 半径計算
       createNode(Math.cos(angle) * r, baseHeight, Math.sin(angle) * r, true);
     }
 
+    // 中間の円（70%位置）に12個の基点を位相をずらして配置
     const midDots = 12;
     for (let i = 0; i < midDots; i++) {
-      const angle = (i / midDots) * Math.PI * 2 + (Math.PI / 12);
-      const r = baseRadius * 0.7;
+      const angle = (i / midDots) * Math.PI * 2 + (Math.PI / 12); // 位相を少しずらす
+      const r = baseRadius * 0.7; // 半径計算
       createNode(Math.cos(angle) * r, baseHeight, Math.sin(angle) * r, true);
     }
 
+    // 外周の円（100%位置）に16個の基点を等間隔配置
     const numBaseDots = 16;
     for (let i = 0; i < numBaseDots; i++) {
       const angle = (i / numBaseDots) * Math.PI * 2;
       createNode(Math.cos(angle) * baseRadius, baseHeight, Math.sin(angle) * baseRadius, true);
     }
 
+    // 固定ノード（初期に配置された基点）の総数を保持（クリア時に消さないようにするため）
     const numFixedNodes = nodes.length;
 
+    // nodeA と nodeB の間に複数セグメントの紐（カテナリー）を作る関数
     function createRope(nodeA, nodeB, segments = 10) {
-      let prevNode = nodeA;
-      // スライダーのたるみ倍率を紐の総延長に反映
+      let prevNode = nodeA; // 連結の開始点
+      // 直線距離を取得
       const straightDist = nodeA.pos.distanceTo(nodeB.pos);
+      // スライダーの「たるみ倍率」をかけた総延長を計算し、分割数で割って1セグメントの長さを求める
       const segmentLength = (straightDist * slackFactor) / segments;
 
+      // セグメント数分だけ中間ノードとバネ拘束を作る
       for (let i = 1; i <= segments; i++) {
         let nextNode;
 
         if (i === segments) {
+          // 最後のノードは目的地の nodeB を使用
           nextNode = nodeB;
         } else {
+          // 途中のノードは nodeA と nodeB の直線上に内分点として新規作成
           const pos = new THREE.Vector3().lerpVectors(nodeA.pos, nodeB.pos, i / segments);
-          nextNode = createNode(pos.x, pos.y, pos.z, false);
+          nextNode = createNode(pos.x, pos.y, pos.z, false); // 固定ではない動的ノード
         }
 
+        // 直前のノードと次のノードの間にバネ拘束（Constraint）を生成して追加
         constraints.push({ p1: prevNode, p2: nextNode, length: segmentLength });
-        prevNode = nextNode;
+        prevNode = nextNode; // 次の接続のために保持
       }
     }
 
+    // 紐全体の見た目（ラインメッシュ）をまとめて管理する変数
     let ropeLines;
+    // 紐を描画するラインメッシュを初期化する関数
     function initRopeVisuals() {
-      if (ropeLines) modelGroup.remove(ropeLines);
-      const geom = new THREE.BufferGeometry();
-      const mat = new THREE.LineBasicMaterial({ color: 0xeeeeee, linewidth: 2 });
-      ropeLines = new THREE.LineSegments(geom, mat);
-      modelGroup.add(ropeLines);
+      if (ropeLines) modelGroup.remove(ropeLines); // 既存があれば削除
+      const geom = new THREE.BufferGeometry(); // 線描画用ジオメトリ
+      const mat = new THREE.LineBasicMaterial({ color: 0xeeeeee, linewidth: 2 }); // 白い線マテリアル
+      ropeLines = new THREE.LineSegments(geom, mat); // 線ペア（LineSegments）のメッシュ生成
+      modelGroup.add(ropeLines); // モデルグループに追加
     }
-    initRopeVisuals();
+    initRopeVisuals(); // 初期呼び出し
 
+    // 物理演算シミュレーションステップ関数（フレーム毎に実行）
     function simulate() {
-      if (isInverted) return;
+      if (isInverted) return; // 上下反転中は物理計算（落下）を一時停止する
 
+      // A. 各ノードの慣性移動と重力更新（Verlet積分）
       for (let node of nodes) {
-        if (node.isFixed) continue;
+        if (node.isFixed) continue; // 固定ノードは動かさない
+        // 速度（現在位置 - 1フレーム前位置）を計算し、空気抵抗相当の減衰（0.985）をかける
         const vel = node.pos.clone().sub(node.oldPos).multiplyScalar(0.985);
-        node.oldPos.copy(node.pos);
-        node.pos.add(vel);
-        node.pos.y += GRAVITY * node.mass;
+        node.oldPos.copy(node.pos); // 1フレーム前の位置を最新位置に更新
+        node.pos.add(vel); // 速度分を現在位置に足す
+        node.pos.y += GRAVITY * node.mass; // 下向きの重力を適用
       }
 
+      // B. バネ拘束の解消計算（反復処理で紐の長さを一定に調整する）
       for (let iter = 0; iter < ITERATIONS; iter++) {
         for (let c of constraints) {
+          // 2つのノード間の現在の距離を計算
           const dist = c.p1.pos.distanceTo(c.p2.pos);
-          if (dist === 0) continue;
+          if (dist === 0) continue; // ゼロ除算防止
+          // 伸び縮みの比率誤差を計算
           const diff = (dist - c.length) / dist;
+          // 各ノードを何割移動して補正するか（半分ずつ引き寄せるため0.5を掛ける）
           const offset = c.p2.pos.clone().sub(c.p1.pos).multiplyScalar(0.5 * diff);
 
+          // 固定ノードでない場合のみ補正座標を足し引きする
           if (!c.p1.isFixed) c.p1.pos.add(offset);
           if (!c.p2.isFixed) c.p2.pos.sub(offset);
         }
       }
 
-      const positions = [];
+      // C. 3Dメッシュ表示の位置同期処理
+      const positions = []; // ラインの座標データ用配列
       for (let node of nodes) {
-        node.mesh.position.copy(node.pos);
-        node.hitMesh.position.copy(node.pos);
+        node.mesh.position.copy(node.pos); // ノード表示用のスフィア位置更新
+        node.hitMesh.position.copy(node.pos); // ヒットメッシュの位置更新
       }
+      // バネで繋がれた全ペアの座標をライン描画用配列に詰める
       for (let c of constraints) {
         positions.push(c.p1.pos.x, c.p1.pos.y, c.p1.pos.z);
         positions.push(c.p2.pos.x, c.p2.pos.y, c.p2.pos.z);
       }
+      // 紐描画用ジオメトリの頂点データを更新
       ropeLines.geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-      ropeLines.geometry.attributes.position.needsUpdate = true;
+      ropeLines.geometry.attributes.position.needsUpdate = true; // 更新通知フラグ
     }
 
-    // --- 4. Interactivity & Raycasting ---
+    // --- 4. Interactivity & Raycasting (マウス操作・レイキャスト処理) ---
+    // マウスカーソル移動イベントの設定
     window.addEventListener('pointermove', onPointerMove);
+    // マウスクリック（押下）イベントの設定
     window.addEventListener('pointerdown', onPointerDown);
 
+    // マウス直下にあるノードを判定して返す関数
     function getIntersectedNode(e) {
+      // スクリーン座標(px)を Three.js 用の正規化デバイス座標(-1 ~ +1) に変換
       mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
       mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+      // カメラとマウス位置から光線（レイ）を設定
       raycaster.setFromCamera(mouse, camera);
 
+      // 当たり判定用メッシュ群との交差判定を実施
       const intersects = raycaster.intersectObjects(raycastTargets);
       if (intersects.length > 0) {
+        // 一番手前の交差オブジェクトからノードデータを返却
         return intersects[0].object.userData.node;
       }
-      return null;
+      return null; // 何もなければ null
     }
 
+    // マウス移動時の処理（ホバー演出）
     function onPointerMove(e) {
+      // 左上のUIパネル上（幅360px、高さ360px以内）にマウスがある場合は3D操作を無効化
       if (e.clientX < 360 && e.clientY < 360) {
         document.body.style.cursor = 'default';
         return;
       }
 
-      const node = getIntersectedNode(e);
+      const node = getIntersectedNode(e); // カーソル下のノードを取得
       if (node !== hoveredNode) {
+        // ホバーから外れた旧ノードの色を元の状態に戻す（選択中でなければ）
         if (hoveredNode && !selectedNodes.includes(hoveredNode)) {
           resetNodeColor(hoveredNode);
         }
-        hoveredNode = node;
+        hoveredNode = node; // 現在のホバーノードを更新
         if (hoveredNode) {
-          document.body.style.cursor = 'pointer';
+          document.body.style.cursor = 'pointer'; // マウスをポインターに変更
           if (!selectedNodes.includes(hoveredNode)) {
+            // ホバー中のノードを黄色(0xfacc15)にハイライト表示
             hoveredNode.mesh.material.color.setHex(0xfacc15);
           }
         } else {
-          document.body.style.cursor = 'default';
+          document.body.style.cursor = 'default'; // カーソルを通常に戻す
         }
       }
     }
 
+    // マウスクリック時の処理（点選択と紐作成）
     function onPointerDown(e) {
+      // UIパネル領域のクリックは無視
       if (e.clientX < 360 && e.clientY < 360) return;
 
-      const node = getIntersectedNode(e);
-      if (!node) return;
+      const node = getIntersectedNode(e); // クリック位置のノード取得
+      if (!node) return; // 点以外をクリックした場合は何もしない
 
-      handleRopeClick(node);
+      handleRopeClick(node); // ノードのクリック処理を実行
     }
 
+    // 点をクリックしたときの選択・紐結び処理
     function handleRopeClick(node) {
+      // 既に選択済みの点を再度クリックした場合は選択をキャンセルする
       if (selectedNodes.includes(node)) {
         selectedNodes = [];
         resetNodeColor(node);
@@ -432,96 +504,115 @@
         return;
       }
 
+      // 点を配列に追加し、選択色（赤：0xef4444）に変更
       selectedNodes.push(node);
       node.mesh.material.color.setHex(0xef4444);
 
       if (selectedNodes.length === 1) {
+        // 1つ目の点を選択完了
         updateStatus("2つ目の点を選んでください（同じ点でキャンセル）。");
       } else if (selectedNodes.length === 2) {
+        // 2つ目の点を選択完了：2点間に紐を張り、選択状態をリセット
         createRope(selectedNodes[0], selectedNodes[1]);
-        resetNodeColor(selectedNodes[0]);
-        resetNodeColor(selectedNodes[1]);
-        selectedNodes = [];
+        resetNodeColor(selectedNodes[0]); // 元の色に戻す
+        resetNodeColor(selectedNodes[1]); // 元の色に戻す
+        selectedNodes = []; // 選択配列クリア
         updateStatus(`紐を張りました (たるみ倍率: ${slackFactor}x)。続けて別の点を選べます。`);
       }
     }
 
+    // ノードの色を本来の規定色に戻す関数
     function resetNodeColor(node) {
       if (!node) return;
       if (node.isFixed) {
-        node.mesh.material.color.setHex(0xf97316);
+        node.mesh.material.color.setHex(0xf97316); // 固定点はオレンジ
       } else {
-        node.mesh.material.color.setHex(0x38bdf8);
+        node.mesh.material.color.setHex(0x38bdf8); // 動的ノードは水色
       }
     }
 
-    // --- 5. UI Controller ---
+    // --- 5. UI Controller (HTMLボタン・スライダーの連動) ---
+    // 各HTML要素の参照を取得
     const btnInvert = document.getElementById('btn-invert');
     const btnReset = document.getElementById('btn-reset');
     const statusBox = document.getElementById('status-box');
     const slackSlider = document.getElementById('slack-slider');
     const slackVal = document.getElementById('slack-val');
 
+    // スライダー操作時にたるみ倍率変数をリアルタイム更新するイベント
     slackSlider.addEventListener('input', (e) => {
-      slackFactor = parseFloat(e.target.value);
-      slackVal.innerText = `${slackFactor.toFixed(1)}x`;
+      slackFactor = parseFloat(e.target.value); // 小数値として取得
+      slackVal.innerText = `${slackFactor.toFixed(1)}x`; // UIに "1.3x" のように反映
     });
 
+    // ガイドテキスト更新用ヘルパー関数
     function updateStatus(msg) {
       statusBox.innerText = msg;
     }
 
+    // 「反転」ボタンをクリックしたときの処理
     btnInvert.addEventListener('click', () => {
-      isInverted = !isInverted;
+      isInverted = !isInverted; // 反転フラグをトグル切り替え
 
+      // 全ノードのY座標から最高点と最低点を探してモデルの「中心高度」を算出
       let minY = Infinity;
       let maxY = -Infinity;
       for (let n of nodes) {
         if (n.pos.y < minY) minY = n.pos.y;
         if (n.pos.y > maxY) maxY = n.pos.y;
       }
-      const centerY = (minY + maxY) / 2;
+      const centerY = (minY + maxY) / 2; // 模型の中心高さ
 
+      // pivotGroupの軸を中心高さに移動し、内部モデルを中心分相殺して戻すことで、中央基準の回転軸を作る
       pivotGroup.position.set(0, centerY, 0);
       modelGroup.position.set(0, -centerY, 0);
 
+      // 目標回転角度（反転時はπrad=180度、通常時は0rad）
       const targetRotation = isInverted ? Math.PI : 0;
-      let startRot = pivotGroup.rotation.z;
-      let startTime = performance.now();
+      let startRot = pivotGroup.rotation.z; // 現在の回転角度
+      let startTime = performance.now(); // アニメーション開始時刻
       
+      // くるっとスムーズに180度回転させる補間アニメーション関数
       function animateInvert(now) {
-        let elapsed = (now - startTime) / 1000;
-        let progress = Math.min(elapsed / 0.8, 1.0);
-        let ease = 0.5 - Math.cos(progress * Math.PI) / 2;
+        let elapsed = (now - startTime) / 1000; // 経過時間(秒)
+        let progress = Math.min(elapsed / 0.8, 1.0); // 0.8秒間でアニメーション完了させる
+        let ease = 0.5 - Math.cos(progress * Math.PI) / 2; // イージング（滑らかな加減速）計算
         
+        // Z軸回転角をイージング補間更新
         pivotGroup.rotation.z = THREE.MathUtils.lerp(startRot, targetRotation, ease);
 
         if (progress < 1.0) {
-          requestAnimationFrame(animateInvert);
+          requestAnimationFrame(animateInvert); // 未完了なら次フレームへ
         }
       }
-      requestAnimationFrame(animateInvert);
+      requestAnimationFrame(animateInvert); // アニメーション開始
 
+      // カメラの注視点ターゲットを中心高さに更新
       controls.target.set(0, centerY, 0);
 
+      // ボタンの見た目（スタイル・テキスト）の切り替え
       btnInvert.classList.toggle('active', isInverted);
-      btnInvert.innerHTML = isInverted ? '<span>🔄</span> 元に戻す (吊り下げ)' : '<span>🔄</span> 上下反転（アーチ化）';
+      btnInvert.innerHTML = isInverted ? '元に戻す' : '反転';
       updateStatus(isInverted ? "上下反転中: 画面中央にアーチが収まるよう調整されました。" : "吊り下げ状態に戻しました。");
     });
 
+    // 「クリア」ボタンをクリックしたときの処理（リセット）
     btnReset.addEventListener('click', () => {
+      // 初期基点より後に作られた動的ノードとメッシュを削除
       for (let i = nodes.length - 1; i >= numFixedNodes; i--) {
         const n = nodes[i];
         modelGroup.remove(n.mesh);
         modelGroup.remove(n.hitMesh);
       }
+      // 配列要素を初期基点分だけに切り詰める
       nodes = nodes.slice(0, numFixedNodes);
       raycastTargets.length = numFixedNodes;
-      constraints = [];
-      selectedNodes = [];
-      initRopeVisuals();
-      if (isInverted) btnInvert.click();
+      constraints = []; // バネ拘束クリア
+      selectedNodes = []; // 選択クリア
+      initRopeVisuals(); // 紐表示メッシュの再初期化
+      if (isInverted) btnInvert.click(); // 反転中なら通常状態に復帰
       
+      // グループ位置を初期状態に戻す
       pivotGroup.position.set(0, 0, 0);
       modelGroup.position.set(0, 0, 0);
       controls.target.set(0, 4, 0);
@@ -529,19 +620,21 @@
       updateStatus("リセットしました。基点を選んでスタートしてください。");
     });
 
-    // --- 6. Render Loop & Resize ---
+    // --- 6. Render Loop & Resize (レンダリングループと画面リサイズ対応) ---
+    // 毎フレーム呼び出されるメインループ関数
     function animate() {
-      requestAnimationFrame(animate);
-      simulate();
-      controls.update();
-      renderer.render(scene, camera);
+      requestAnimationFrame(animate); // 次の描画タイミングで再呼び出しを登録
+      simulate(); // 物理計算を実行して各パーツの位置を更新
+      controls.update(); // カメラコントロールの視点更新
+      renderer.render(scene, camera); // シーンをカメラ視点で描画
     }
-    animate();
+    animate(); // メインループを初起動
 
+    // ウインドウサイズが変更された時のレスポンシブ処理
     window.addEventListener('resize', () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
+      camera.aspect = window.innerWidth / window.innerHeight; // アスペクト比を再設定
+      camera.updateProjectionMatrix(); // カメラの射影行列を更新
+      renderer.setSize(window.innerWidth, window.innerHeight); // レンダラーサイズを更新
     });
   </script>
 </body>
